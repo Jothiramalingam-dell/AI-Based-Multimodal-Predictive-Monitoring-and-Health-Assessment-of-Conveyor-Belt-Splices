@@ -1,0 +1,50 @@
+AI-Based Multimodal Predictive Monitoring of Conveyor Belt Splice Failure
+                
+                CONVEYOR BELT & SPLICE
+                         │
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+     Camera Sensor   Vibration      Current / Load
+                     Sensor           Sensor
+          │              │              │
+          └──────────────┼──────────────┘
+                         ↓
+                ESP32 / Controller
+             Data Collection & Sync
+                         │
+                         ↓
+                Data Pre-processing
+                         │
+          ┌──────────────┼──────────────┐
+          ↓              ↓              ↓
+    Image Processing  Vibration      Load/Current
+                      Analysis         Analysis
+          └──────────────┼──────────────┘
+                         ↓
+                  AI / ML MODEL
+               Multimodal Data Fusion
+                         │
+                         ↓
+               SPLICE HEALTH INDEX
+                         │
+                  ┌──────┴──────┐
+                  ↓             ↓
+           Failure-Risk      Maintenance
+            Prediction          Alert
+                  │             │
+                  └──────┬──────┘
+                         ↓
+                    DASHBOARD
+
+Component Functions
+
+Camera Sensor: Detects visible cracks, tears, deformation, and other splice defects.
+Vibration Sensor: Identifies abnormal vibration patterns associated with splice degradation.
+Current/Load Sensor: Monitors changes in conveyor motor current and operating load.
+ESP32/Controller: Collects and synchronizes data from all sensors.
+Data Pre-processing: Removes noise and prepares sensor data for AI analysis.
+AI/ML Model: Combines visual, vibration, and operational data using multimodal data fusion.
+Splice Health Index: Represents the current condition of the conveyor-belt splice.
+Failure-Risk Prediction: Estimates the risk of potential splice failure.
+Maintenance Alert: Generates an early warning when abnormal degradation is detected.
+Dashboard: Displays splice health, sensor values, risk status, and maintenance alerts.
