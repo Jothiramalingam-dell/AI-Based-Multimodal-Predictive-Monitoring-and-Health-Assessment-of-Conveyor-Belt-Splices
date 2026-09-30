@@ -1,0 +1,116 @@
+import numpy as np
+import pandas as pd
+
+
+def calculate_failure_risk(row):
+
+    # Camera defect contribution
+    camera_score = row["camera_defect_score"]
+
+    # Vibration contribution
+    vibration_score = min(
+        row["vibration_rms"] / 1.2,
+        1.0
+    )
+
+    # Motor/load contribution
+    load_score = min(
+        row["motor_current"] / 8.0,
+        1.0
+    )
+
+    # Multimodal weighted fusion
+    risk = (
+        0.40 * camera_score +
+        0.35 * vibration_score +
+        0.25 * load_score
+    )
+
+    return risk
+
+
+def classify_risk(risk):
+
+    if risk < 0.30:
+        return "LOW RISK"
+
+    elif risk < 0.60:
+        return "MODERATE RISK"
+
+    elif risk < 0.80:
+        return "HIGH RISK"
+
+    else:
+        return "CRITICAL RISK"
+
+
+# Load sample data
+data = pd.read_csv(
+    "data/sample_sensor_data.csv"
+)
+
+print("\nAI Multimodal Splice Monitoring")
+print("--------------------------------")
+
+
+# -------------------------------------------------------
+# NEW: List to store inference results for every sample
+# -------------------------------------------------------
+results = []
+
+
+for _, row in data.iterrows():
+
+    # Calculate multimodal failure risk
+    risk = calculate_failure_risk(row)
+
+    # Convert risk score into a risk category
+    status = classify_risk(risk)
+
+    print(
+        f"Sample {int(row['sample_id'])} | "
+        f"Risk Score: {risk:.2f} | "
+        f"Status: {status}"
+    )
+
+    # ---------------------------------------------------
+    # NEW: Store each sample's result
+    # ---------------------------------------------------
+    results.append({
+        "sample_id": int(row["sample_id"]),
+        "risk_score": round(risk, 2),
+        "risk_status": status
+    })
+
+
+# -------------------------------------------------------
+# NEW: Convert results into a DataFrame
+# -------------------------------------------------------
+risk_output = pd.DataFrame(results)
+
+
+# -------------------------------------------------------
+# NEW: Save the results into the data folder
+# -------------------------------------------------------
+output_file = "data/risk_classification_output.csv"
+
+risk_output.to_csv(
+    output_file,
+    index=False
+)
+
+
+print("\n--------------------------------")
+print(f"Risk classification saved to: {output_file}")
+
+risk_classification_output.csv
+
+sample_id,risk_score,risk_status
+1,0.11,LOW RISK
+2,0.15,LOW RISK
+3,0.20,LOW RISK
+4,0.31,MODERATE RISK
+5,0.45,MODERATE RISK
+6,0.58,MODERATE RISK
+7,0.68,HIGH RISK
+8,0.80,CRITICAL RISK
