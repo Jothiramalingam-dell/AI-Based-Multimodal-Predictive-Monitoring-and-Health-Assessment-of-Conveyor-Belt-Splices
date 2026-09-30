@@ -1,0 +1,33 @@
+BeltGuard AI
+
+For your GitHub, you can add this as the Technology Stack section:
+Hardware
+
+ESP32 — Sensor data acquisition & communication
+ESP32-CAM / Camera — Visual splice inspection
+MPU6050 — Vibration monitoring
+Current/Load Sensor — Conveyor load monitoring
+Optional Microphone — Acoustic anomaly detection
+
+AI & Machine Learning
+Python — AI/ML development
+OpenCV — Image processing & defect detection
+Scikit-learn — Machine learning & risk classification
+NumPy / Pandas — Data processing & analysis
+PyTorch / TensorFlow — Optional deep-learning models
+
+Data & Signal Processing
+Vibration Signal Processing — Abnormal vibration analysis
+Feature Extraction — Image, vibration & load features
+Multimodal Data Fusion — Combining multiple sensor outputs
+
+Dashboard & Software
+HTML5 — Dashboard structure
+CSS3 — Dashboard design
+JavaScript — Real-time dashboard interaction
+Flask — Python-based backend/API
+
+Development Tools
+Arduino IDE — ESP32 programming
+VS Code — Development environment
+Git & GitHub — Version control and project management
