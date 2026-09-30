@@ -1,0 +1,494 @@
+1. Main ESP32 — Sensor + Motor + Alert Code
+Suggested pin connections
+Component
+ESP32 Pin
+MPU6050 SDA
+GPIO 21
+MPU6050 SCL
+GPIO 22
+DS18B20 DATA
+GPIO 4
+ACS712 OUT
+GPIO 34
+Proximity Sensor OUT
+GPIO 27
+Green LED
+GPIO 25
+Red LED
+GPIO 26
+Buzzer
+GPIO 33
+Motor Driver EN/PWM
+GPIO 18
+Motor Driver IN1
+GPIO 16
+Motor Driver IN2
+GPIO 17
+Important: ESP32 GPIOs are 3.3 V logic. Do not directly feed a 5 V signal into an ESP32 GPIO.
+For ACS712, check your exact module. Many ACS712 boards are powered at 5 V and their analog output can exceed the ESP32 ADC's safe range. Use an appropriate voltage divider/level-shifting arrangement before GPIO34.
+
+Arduino code
+Install these libraries in Arduino IDE:
+Adafruit MPU6050
+Adafruit Unified Sensor
+OneWire
+DallasTemperature
+
+#include <Wire.h>
+#include <Adafruit_MPU6050.h>
+#include <Adafruit_Sensor.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
+
+// ================= PIN DEFINITIONS =================
+
+// MPU6050
+#define SDA_PIN 21
+#define SCL_PIN 22
+
+// DS18B20
+#define TEMP_PIN 4
+
+// ACS712
+#define CURRENT_PIN 34
+
+// Proximity sensor
+#define PROX_PIN 27
+
+// Indicators
+#define GREEN_LED 25
+#define RED_LED 26
+#define BUZZER 33
+
+// Motor driver
+#define MOTOR_PWM 18
+#define MOTOR_IN1 16
+#define MOTOR_IN2 17
+
+// ================= OBJECTS =================
+
+Adafruit_MPU6050 mpu;
+
+OneWire oneWire(TEMP_PIN);
+DallasTemperature temperatureSensor(&oneWire);
+
+// ================= SETTINGS =================
+
+// Change according to your ACS712 model:
+// 5A  -> 0.185 V/A
+// 20A -> 0.100 V/A
+// 30A -> 0.066 V/A
+float ACS_SENSITIVITY = 0.100;
+
+// Adjust after calibration
+float ACS_ZERO_VOLTAGE = 2.5;
+
+// Motor speed: 0-255
+int motorSpeed = 150;
+
+// Example warning limits
+float TEMPERATURE_LIMIT = 60.0;
+float VIBRATION_LIMIT = 2.5;
+float CURRENT_LIMIT = 5.0;
+
+// ================= SETUP =================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  // I2C
+  Wire.begin(SDA_PIN, SCL_PIN);
+
+  // MPU6050
+  if (!mpu.begin()) {
+    Serial.println("MPU6050 NOT FOUND!");
+    while (1) {
+      delay(1000);
+    }
+  }
+
+  Serial.println("MPU6050 Connected");
+
+  // DS18B20
+  temperatureSensor.begin();
+
+  // Proximity
+  pinMode(PROX_PIN, INPUT);
+
+  // LEDs
+  pinMode(GREEN_LED, OUTPUT);
+  pinMode(RED_LED, OUTPUT);
+
+  // Buzzer
+  pinMode(BUZZER, OUTPUT);
+
+  // Motor driver
+  pinMode(MOTOR_PWM, OUTPUT);
+  pinMode(MOTOR_IN1, OUTPUT);
+  pinMode(MOTOR_IN2, OUTPUT);
+
+  // Start motor
+  digitalWrite(MOTOR_IN1, HIGH);
+  digitalWrite(MOTOR_IN2, LOW);
+
+  analogWrite(MOTOR_PWM, motorSpeed);
+
+  digitalWrite(GREEN_LED, HIGH);
+  digitalWrite(RED_LED, LOW);
+  digitalWrite(BUZZER, LOW);
+
+  Serial.println("=================================");
+  Serial.println("BELTGUARD AI");
+  Serial.println("System Started");
+  Serial.println("=================================");
+}
+
+// ================= LOOP =================
+
+void loop() {
+
+  // -------- MPU6050 --------
+
+  sensors_event_t acceleration;
+  sensors_event_t gyro;
+  sensors_event_t temperature;
+
+  mpu.getEvent(&acceleration, &gyro, &temperature);
+
+  float ax = acceleration.acceleration.x;
+  float ay = acceleration.acceleration.y;
+  float az = acceleration.acceleration.z;
+
+  // Calculate acceleration magnitude
+  float vibration = sqrt(
+    ax * ax +
+    ay * ay +
+    az * az
+  );
+
+  // -------- DS18B20 --------
+
+  temperatureSensor.requestTemperatures();
+
+  float beltTemperature =
+    temperatureSensor.getTempCByIndex(0);
+
+  // -------- ACS712 --------
+
+  int rawCurrent = analogRead(CURRENT_PIN);
+
+  float adcVoltage =
+    (rawCurrent / 4095.0) * 3.3;
+
+  /*
+     If you use a voltage divider for ACS712,
+     modify this calculation according
+     to your divider ratio.
+  */
+
+  float sensorVoltage = adcVoltage;
+
+  float current =
+    (sensorVoltage - ACS_ZERO_VOLTAGE)
+    / ACS_SENSITIVITY;
+
+  current = abs(current);
+
+  // -------- PROXIMITY --------
+
+  int proximityState =
+    digitalRead(PROX_PIN);
+
+  bool beltMoving = false;
+
+  if (proximityState == HIGH) {
+    beltMoving = true;
+  }
+
+  // -------- ABNORMAL CONDITION --------
+
+  bool abnormal = false;
+
+  if (beltTemperature > TEMPERATURE_LIMIT) {
+    abnormal = true;
+  }
+
+  if (vibration > VIBRATION_LIMIT) {
+    abnormal = true;
+  }
+
+  if (current > CURRENT_LIMIT) {
+    abnormal = true;
+  }
+
+  // -------- ALERT SYSTEM --------
+
+  if (abnormal) {
+
+    digitalWrite(GREEN_LED, LOW);
+    digitalWrite(RED_LED, HIGH);
+
+    digitalWrite(BUZZER, HIGH);
+
+  } else {
+
+    digitalWrite(GREEN_LED, HIGH);
+    digitalWrite(RED_LED, LOW);
+
+    digitalWrite(BUZZER, LOW);
+  }
+
+  // -------- SERIAL OUTPUT --------
+
+  Serial.println("------------ BELT DATA ------------");
+
+  Serial.print("Vibration: ");
+  Serial.print(vibration);
+  Serial.println(" m/s^2");
+
+  Serial.print("Temperature: ");
+  Serial.print(beltTemperature);
+  Serial.println(" C");
+
+  Serial.print("Current: ");
+  Serial.print(current);
+  Serial.println(" A");
+
+  Serial.print("Belt Movement: ");
+  Serial.println(beltMoving ? "YES" : "NO");
+
+  Serial.print("System Status: ");
+
+  if (abnormal) {
+    Serial.println("WARNING");
+  } else {
+    Serial.println("NORMAL");
+  }
+
+  // -------- JSON-LIKE DATA --------
+
+  Serial.print("{");
+
+  Serial.print("\"vibration\":");
+  Serial.print(vibration);
+
+  Serial.print(",\"temperature\":");
+  Serial.print(beltTemperature);
+
+  Serial.print(",\"current\":");
+  Serial.print(current);
+
+  Serial.print(",\"belt_moving\":");
+  Serial.print(beltMoving ? "true" : "false");
+
+  Serial.print(",\"status\":\"");
+  Serial.print(abnormal ? "WARNING" : "NORMAL");
+  Serial.println("\"}");
+
+  delay(1000);
+}
+
+2. ESP32-CAM Code
+The ESP32-CAM is used separately for visual inspection.
+It captures the belt/splice image. Later, your Python/OpenCV/AI model can analyse the image for visible defects.
+
+#include "esp_camera.h"
+#include <WiFi.h>
+#include <WebServer.h>
+
+// ================= WIFI =================
+
+const char* ssid = "YOUR_WIFI_NAME";
+const char* password = "YOUR_WIFI_PASSWORD";
+
+WebServer server(80);
+
+// ================= AI THINKER ESP32-CAM PINS =================
+
+#define PWDN_GPIO_NUM     32
+#define RESET_GPIO_NUM    -1
+#define XCLK_GPIO_NUM      0
+#define SIOD_GPIO_NUM     26
+#define SIOC_GPIO_NUM     27
+
+#define Y9_GPIO_NUM       35
+#define Y8_GPIO_NUM       34
+#define Y7_GPIO_NUM       39
+#define Y6_GPIO_NUM       36
+#define Y5_GPIO_NUM       21
+#define Y4_GPIO_NUM       19
+#define Y3_GPIO_NUM       18
+#define Y2_GPIO_NUM        5
+
+#define VSYNC_GPIO_NUM    25
+#define HREF_GPIO_NUM     23
+#define PCLK_GPIO_NUM     22
+
+// ================= CAMERA =================
+
+void setupCamera() {
+
+  camera_config_t config;
+
+  config.ledc_channel = LEDC_CHANNEL_0;
+  config.ledc_timer = LEDC_TIMER_0;
+
+  config.pin_d0 = Y2_GPIO_NUM;
+  config.pin_d1 = Y3_GPIO_NUM;
+  config.pin_d2 = Y4_GPIO_NUM;
+  config.pin_d3 = Y5_GPIO_NUM;
+  config.pin_d4 = Y6_GPIO_NUM;
+  config.pin_d5 = Y7_GPIO_NUM;
+  config.pin_d6 = Y8_GPIO_NUM;
+  config.pin_d7 = Y9_GPIO_NUM;
+
+  config.pin_xclk = XCLK_GPIO_NUM;
+  config.pin_pclk = PCLK_GPIO_NUM;
+  config.pin_vsync = VSYNC_GPIO_NUM;
+  config.pin_href = HREF_GPIO_NUM;
+
+  config.pin_sscb_sda = SIOD_GPIO_NUM;
+  config.pin_sscb_scl = SIOC_GPIO_NUM;
+
+  config.pin_pwdn = PWDN_GPIO_NUM;
+  config.pin_reset = RESET_GPIO_NUM;
+
+  config.xclk_freq_hz = 20000000;
+
+  config.pixel_format = PIXFORMAT_JPEG;
+
+  config.frame_size = FRAMESIZE_VGA;
+  config.jpeg_quality = 12;
+  config.fb_count = 1;
+
+  esp_err_t result = esp_camera_init(&config);
+
+  if (result != ESP_OK) {
+
+    Serial.print("Camera initialization failed: ");
+    Serial.println(result);
+
+    while (true) {
+      delay(1000);
+    }
+  }
+
+  Serial.println("Camera initialized successfully");
+}
+
+// ================= CAPTURE =================
+
+void captureImage() {
+
+  camera_fb_t *fb =
+    esp_camera_fb_get();
+
+  if (!fb) {
+
+    Serial.println("Camera capture failed");
+
+    server.send(
+      500,
+      "text/plain",
+      "Camera capture failed"
+    );
+
+    return;
+  }
+
+  server.send_P(
+    200,
+    "image/jpeg",
+    (const char*)fb->buf,
+    fb->len
+  );
+
+  esp_camera_fb_return(fb);
+}
+
+// ================= SETUP =================
+
+void setup() {
+
+  Serial.begin(115200);
+
+  setupCamera();
+
+  WiFi.begin(
+    ssid,
+    password
+  );
+
+  Serial.print("Connecting to WiFi");
+
+  while (WiFi.status() != WL_CONNECTED) {
+
+    delay(500);
+    Serial.print(".");
+  }
+
+  Serial.println();
+
+  Serial.println("WiFi connected");
+
+  Serial.print("ESP32-CAM IP: ");
+  Serial.println(WiFi.localIP());
+
+  server.on(
+    "/capture",
+    HTTP_GET,
+    captureImage
+  );
+
+  server.begin();
+
+  Serial.println(
+    "Camera server started"
+  );
+}
+
+// ================= LOOP =================
+
+void loop() {
+
+  server.handleClient();
+}
+
+3. Overall Project Connection
+
+                    CONVEYOR BELT
+                         │
+        ┌────────────────┼────────────────┐
+        ↓                ↓                ↓
+   ESP32-CAM          MPU6050          ACS712
+   Camera             Vibration        Current
+        │                │                │
+        │             DS18B20          Proximity
+        │             Temperature       Sensor
+        │                │                │
+        └────────────────┼────────────────┘
+                         ↓
+                    MAIN ESP32
+                         │
+              Data Collection
+              & Synchronization
+                         │
+                         ↓
+                 Laptop / PC
+                         │
+              ┌──────────┴──────────┐
+              ↓                     ↓
+        OpenCV / AI             Sensor Analysis
+        Image Analysis          Vibration + Load
+              └──────────┬──────────┘
+                         ↓
+                MULTIMODAL AI/ML
+                         ↓
+                 SPLICE HEALTH
+                         ↓
+                 FAILURE RISK
+                         ↓
+              ┌──────────┴──────────┐
+              ↓                     ↓
+          Dashboard             LED + Buzzer
