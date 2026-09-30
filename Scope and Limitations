@@ -1,0 +1,21 @@
+CURRENT SCOPE
+
+Real-time monitoring of conveyor belt splice condition.
+Integration of camera, vibration and load/current sensors.
+AI-based multimodal data analysis for early degradation detection.
+Generation of Splice Health Index and failure-risk alerts.
+Suitable for prototype-scale conveyor belt testing.
+
+FUTURE SCOPE
+Integration with industrial-grade sensors for mining environments.
+IoT/cloud connectivity for remote monitoring and centralized dashboards.
+Advanced AI for Remaining Useful Life (RUL) prediction.
+Automatic conveyor speed reduction or shutdown during critical conditions.
+Expansion to detect multiple belt damage types across long conveyor systems.
+
+LIMITATIONS
+AI performance depends on the quality and quantity of training data.
+Dust, vibration and poor lighting can affect sensor/camera accuracy.
+Prototype results may differ from real mining-site conditions.
+Accurate failure prediction requires long-term operational data.
+Industrial deployment requires ruggedized hardware and extensive validation.
